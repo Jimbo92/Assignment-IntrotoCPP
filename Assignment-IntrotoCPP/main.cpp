@@ -17,7 +17,7 @@ int CurrentFloor = 0;
 
 int PlayerHasBeen = 0;
 
-int EntitiesOnFloor = 0;
+int EntitiesOnFloor();
 
 char RoomGrid[MAX_FLOOR_SIZE][MAX_GRID_SIZE][MAX_GRID_SIZE] = {};
 
@@ -27,6 +27,7 @@ void Movement();
 void EntityChecks();
 bool CheckDeath();
 void CheckFloor();
+
 
 struct Player
 {
@@ -70,7 +71,7 @@ int main()
 void Draw_Grid()
 {
 	//Draws the player in its current position in the map first////----
-	RoomGrid[CurrentFloor][player.yPos][player.xPos] = (char)219;
+	RoomGrid[CurrentFloor][player.yPos][player.xPos] = (char)127;
 
 	//Draw Floor Number
 	if (CurrentFloor < 1)
@@ -100,7 +101,20 @@ void Draw_Grid()
 	{
 		for (int j = 0; j < MAX_GRID_SIZE; j++)
 		{
-			cout << (char)179 << RoomGrid[CurrentFloor][i][j];
+			//Check for rooms around player and draw player and has been path
+			if (player.xPos + 1 == j && player.yPos == i 
+				|| player.xPos - 1 == j && player.yPos == i 
+				|| player.yPos + 1 == i && player.xPos == j
+				|| player.yPos - 1 == i && player.xPos == j
+				|| RoomGrid[CurrentFloor][i][j] == (char)127
+				|| RoomGrid[CurrentFloor][i][j] == (char)176)
+			{
+				cout << (char)179 << RoomGrid[CurrentFloor][i][j];
+			}
+			else
+			{
+				cout << (char)179 << (char)32;
+			}
 		}
 
 		cout << (char)179;
@@ -163,20 +177,18 @@ void SetUpEntities()
 		}
 	}
 
-	RoomGrid[CurrentFloor][player.yPos][player.xPos] = (char)219;
-
-	for (int i = 0; i < MAX_GRID_SIZE; i++)
+	//Blocked rooms
+	for (int i = 0; i < MAX_FLOOR_SIZE; i++)
 	{
-		for (int j = 0; j < MAX_GRID_SIZE; j++)
+		for (int j = 0; j < MAX_ENTITY_SIZE / 2; j++)
 		{
-			if (RoomGrid[CurrentFloor][i][j] == (char)63)
-			{
-				EntitiesOnFloor++;
-			}
+			RoomGrid[i][RandNum(MAX_GRID_SIZE)][RandNum(MAX_GRID_SIZE)] = (char)219;
 		}
 	}
 
-	PlayerHasBeen = EntitiesOnFloor;
+	RoomGrid[CurrentFloor][player.yPos][player.xPos] = (char)219;
+
+	PlayerHasBeen = EntitiesOnFloor();
 }
 
 int RandNum(int value)
@@ -192,25 +204,38 @@ void Movement()
 	myString Input;
 	cout << "Enter Left, Right, Up, Down to move to different rooms: ";
 	Input.ReadFromConsole();
+	Input.ToLower();
 
-	//Resets current player position
+	//Sets the player path
 	RoomGrid[CurrentFloor][player.yPos][player.xPos] = (char)176;
 
 	if (Input.EqualTo("left") || Input.EqualTo("a"))
 	{
-		player.xPos--;
+		if (RoomGrid[CurrentFloor][player.yPos][player.xPos - 1] != (char)219)
+		{
+			player.xPos--;
+		}
 	}
 	else if (Input.EqualTo("right") || Input.EqualTo("d"))
 	{
-		player.xPos++;
+		if (RoomGrid[CurrentFloor][player.yPos][player.xPos + 1] != (char)219)
+		{
+			player.xPos++;
+		}
 	}
 	else if (Input.EqualTo("up") || Input.EqualTo("w"))
 	{
-		player.yPos--;
+		if (RoomGrid[CurrentFloor][player.yPos - 1][player.xPos] != (char)219)
+		{
+			player.yPos--;
+		}
 	}
 	else if (Input.EqualTo("down") || Input.EqualTo("s"))
 	{
-		player.yPos++;
+		if (RoomGrid[CurrentFloor][player.yPos + 1][player.xPos] != (char)219)
+		{
+			player.yPos++;
+		}
 	}
 	else
 	{
@@ -257,27 +282,24 @@ void EntityChecks()
 
 	switch (EntityChooser)
 	{
-	case 0:
-	{
-			  //Treasure entity
-			  cout << "You found some treasure!" << endl;
-			  player.item_Treasure++;
-	}
-		break;
-	case 1:
-	{
-			  //Enemy entity
-			  int Damage = RandNum(50);
-			  cout << "You battled an enemy and lost " << Damage << " Health." << endl;
-			  player.Health -= Damage;
-	}
-		break;
-	case 2:
-	{
-			  //Nothing of interest
-			  cout << "You find nothing of interest in this room." << endl;
-	}
-		break;
+		case 0:
+		{
+				  //Treasure entity
+				  cout << "You found some treasure!" << endl;
+				  player.item_Treasure++;
+		} break;
+		case 1:
+		{
+				  //Enemy entity
+				  int Damage = RandNum(50);
+				  cout << "You battled an enemy and lost " << Damage << " Health." << endl;
+				  player.Health -= Damage;
+		} break;
+		case 2:
+		{
+				  //Nothing of interest
+				  cout << "You find nothing of interest in this room." << endl;
+		} break;
 	}
 
 	player.isDead = CheckDeath();
@@ -309,9 +331,27 @@ void CheckFloor()
 		player.Health = 100;
 
 		CurrentFloor++;
-		PlayerHasBeen = EntitiesOnFloor;
+		PlayerHasBeen = EntitiesOnFloor();
 
 		system("cls");
 		Draw_Grid();
 	}
+}
+
+int EntitiesOnFloor()
+{
+	int value = 0;
+
+	for (int i = 0; i < MAX_GRID_SIZE; i++)
+	{
+		for (int j = 0; j < MAX_GRID_SIZE; j++)
+		{
+			if (RoomGrid[CurrentFloor][i][j] == (char)63)
+			{
+				value++;
+			}
+		}
+	}
+
+	return value;
 }
