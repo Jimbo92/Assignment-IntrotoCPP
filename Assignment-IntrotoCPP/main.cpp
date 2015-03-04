@@ -2,12 +2,11 @@
 #include "myString.h"
 #include <cstdlib>
 #include <time.h>
+#include "Player.h"
+#include "Room.h"
+#include "Globals.h"
 
 using namespace std;
-
-const int MAX_GRID_SIZE = 5;
-const int MAX_FLOOR_SIZE = 4;
-const int MAX_ENTITY_SIZE = MAX_GRID_SIZE * 2;
 
 void Draw_Grid();
 
@@ -23,34 +22,19 @@ char RoomGrid[MAX_FLOOR_SIZE][MAX_GRID_SIZE][MAX_GRID_SIZE] = {};
 
 void SetUpEntities();
 int RandNum(int);
-void Movement();
 void EntityChecks();
 bool CheckDeath();
 void CheckFloor();
 
 
-struct Player
-{
-	int xPos = 0;
-	int yPos = 0;
-
-	int item_Treasure = 0;
-
-	int Health = 100;
-
-	bool isDead = false;
-};
-
 Player player;
+Room room;
 
 int main()
 {
 	srand(time(0));
 
 	//word.TestFunction();
-
-	player.xPos = rand() % MAX_GRID_SIZE;
-	player.yPos = rand() % MAX_GRID_SIZE;
 
 	SetUpEntities();
 
@@ -60,7 +44,7 @@ int main()
 
 		Draw_Grid();
 
-		Movement();
+		player.Movement(&CheckFloor, RoomGrid, CurrentFloor);
 
 		EntityChecks();
 	}
@@ -102,12 +86,13 @@ void Draw_Grid()
 		for (int j = 0; j < MAX_GRID_SIZE; j++)
 		{
 			//Check for rooms around player and draw player and has been path
-			if (player.xPos + 1 == j && player.yPos == i 
-				|| player.xPos - 1 == j && player.yPos == i 
+			if (player.xPos + 1 == j && player.yPos == i
+				|| player.xPos - 1 == j && player.yPos == i
 				|| player.yPos + 1 == i && player.xPos == j
 				|| player.yPos - 1 == i && player.xPos == j
 				|| RoomGrid[CurrentFloor][i][j] == (char)127
-				|| RoomGrid[CurrentFloor][i][j] == (char)176)
+				|| RoomGrid[CurrentFloor][i][j] == (char)176
+				|| RoomGrid[CurrentFloor][i][j] == (char)219)
 			{
 				cout << (char)179 << RoomGrid[CurrentFloor][i][j];
 			}
@@ -169,22 +154,34 @@ void SetUpEntities()
 {
 	//Sets up the world map entities
 
-	for (int i = 0; i < MAX_FLOOR_SIZE; i++)
+	for (int j = 0; j < MAX_ENTITY_SIZE; j++)
 	{
-		for (int j = 0; j < MAX_ENTITY_SIZE; j++)
-		{
-			RoomGrid[i][RandNum(MAX_GRID_SIZE)][RandNum(MAX_GRID_SIZE)] = (char)63;
-		}
+		RoomGrid[CurrentFloor][RandNum(MAX_GRID_SIZE)][RandNum(MAX_GRID_SIZE)] = (char)63;
 	}
 
 	//Blocked rooms
-	for (int i = 0; i < MAX_FLOOR_SIZE; i++)
+	int wallType = RandNum(2);
+
+	int RandX = RandNum(MAX_GRID_SIZE);
+	int RandY = RandNum(MAX_GRID_SIZE);
+
+	for (int j = 0; j < MAX_ENTITY_SIZE / 3; j++)
 	{
-		for (int j = 0; j < MAX_ENTITY_SIZE / 2; j++)
+		if (RandX + j < MAX_GRID_SIZE && RandY + j < MAX_GRID_SIZE && RandX + j >= 0 && RandY + j >= 0)
 		{
-			RoomGrid[i][RandNum(MAX_GRID_SIZE)][RandNum(MAX_GRID_SIZE)] = (char)219;
+			if (wallType == 1)
+			{
+				RoomGrid[CurrentFloor][RandY][RandX + j] = (char)219;
+			}
+			else
+			{
+				RoomGrid[CurrentFloor][RandY + j][RandX] = (char)219;
+			}
 		}
 	}
+
+	player.xPos = rand() % MAX_GRID_SIZE;
+	player.yPos = rand() % MAX_GRID_SIZE;
 
 	RoomGrid[CurrentFloor][player.yPos][player.xPos] = (char)219;
 
@@ -196,72 +193,6 @@ int RandNum(int value)
 	return rand() % value;
 }
 
-void Movement()
-{
-	CheckFloor();
-
-	//Movement
-	myString Input;
-	cout << "Enter Left, Right, Up, Down to move to different rooms: ";
-	Input.ReadFromConsole();
-	Input.ToLower();
-
-	//Sets the player path
-	RoomGrid[CurrentFloor][player.yPos][player.xPos] = (char)176;
-
-	if (Input.EqualTo("left") || Input.EqualTo("a"))
-	{
-		if (RoomGrid[CurrentFloor][player.yPos][player.xPos - 1] != (char)219)
-		{
-			player.xPos--;
-		}
-	}
-	else if (Input.EqualTo("right") || Input.EqualTo("d"))
-	{
-		if (RoomGrid[CurrentFloor][player.yPos][player.xPos + 1] != (char)219)
-		{
-			player.xPos++;
-		}
-	}
-	else if (Input.EqualTo("up") || Input.EqualTo("w"))
-	{
-		if (RoomGrid[CurrentFloor][player.yPos - 1][player.xPos] != (char)219)
-		{
-			player.yPos--;
-		}
-	}
-	else if (Input.EqualTo("down") || Input.EqualTo("s"))
-	{
-		if (RoomGrid[CurrentFloor][player.yPos + 1][player.xPos] != (char)219)
-		{
-			player.yPos++;
-		}
-	}
-	else
-	{
-		cout << "Invalid Entry!" << endl;
-		system("pause");
-	}
-
-	//Make sure player is not outside grid size
-	if (player.xPos >= MAX_GRID_SIZE)
-	{
-		player.xPos--;
-	}
-	else if (player.xPos < 0)
-	{
-		player.xPos++;
-	}
-	else if (player.yPos >= MAX_GRID_SIZE)
-	{
-		player.yPos--;
-	}
-	else if (player.yPos < 0)
-	{
-		player.yPos++;
-	}
-}
-
 void EntityChecks()
 {
 	int EntityChooser = 0;
@@ -269,8 +200,9 @@ void EntityChecks()
 	if (RoomGrid[CurrentFloor][player.yPos][player.xPos] == (char)63)
 	{
 		PlayerHasBeen--;
-		EntityChooser = RandNum(3);
+
 		system("cls");
+		room.RoomChooser(player);
 		Draw_Grid();
 	}
 	else
@@ -278,29 +210,6 @@ void EntityChecks()
 		return;
 	}
 
-	cout << endl;
-
-	switch (EntityChooser)
-	{
-		case 0:
-		{
-				  //Treasure entity
-				  cout << "You found some treasure!" << endl;
-				  player.item_Treasure++;
-		} break;
-		case 1:
-		{
-				  //Enemy entity
-				  int Damage = RandNum(50);
-				  cout << "You battled an enemy and lost " << Damage << " Health." << endl;
-				  player.Health -= Damage;
-		} break;
-		case 2:
-		{
-				  //Nothing of interest
-				  cout << "You find nothing of interest in this room." << endl;
-		} break;
-	}
 
 	player.isDead = CheckDeath();
 
@@ -325,13 +234,13 @@ void CheckFloor()
 {
 	if (PlayerHasBeen <= 0)
 	{
-		cout << "Floor Complete, You Regain your health back and advance to the next level." << endl;
+		cout << endl << "Floor Complete, You Regain your health back and advance to the next level." << endl << endl;
 		system("pause");
 
 		player.Health = 100;
 
 		CurrentFloor++;
-		PlayerHasBeen = EntitiesOnFloor();
+		SetUpEntities();
 
 		system("cls");
 		Draw_Grid();
@@ -346,7 +255,7 @@ int EntitiesOnFloor()
 	{
 		for (int j = 0; j < MAX_GRID_SIZE; j++)
 		{
-			if (RoomGrid[CurrentFloor][i][j] == (char)63)
+			if (RoomGrid[CurrentFloor][j][i] == (char)63)
 			{
 				value++;
 			}
